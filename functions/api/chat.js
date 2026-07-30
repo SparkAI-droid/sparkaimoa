@@ -1,24 +1,31 @@
-export async function onRequestPost(context) {
-  const apiKey = context.env.GROQ_API_KEY;
-
-  if (!apiKey) {
-    return new Response(JSON.stringify({ error: "Missing GROQ_API_KEY" }), { status: 500 });
+export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { message } = await context.request.json();
+  const apiKey = process.env.GROQ_API_KEY;
+  if (!apiKey) {
+    return res.status(500).json({ error: 'GROQ_API_KEY environment variable is missing.' });
+  }
 
-  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${apiKey}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      model: "llama-3.1-8b-instant",
-      messages: [{ role: "user", content: message }]
-    })
-  });
+  try {
+    const { message } = req.body;
 
-  const data = await res.json();
-  return new Response(JSON.stringify(data));
+    const groqResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: "llama-3.1-8b-instant",
+        messages: [{ role: "user", content: message || "Hello" }]
+      })
+    });
+
+    const data = await groqResponse.json();
+    return res.status(200).json(data);
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
 }
