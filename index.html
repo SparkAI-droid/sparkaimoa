@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  body{background:#0d1117;color:#fff;font-family:sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;margin:0}
+  .globe{width:140px;height:140px;border-radius:50%;background:radial-gradient(circle at 30% 30%,#fff,#00f2fe,#ff0055);box-shadow:0 0 50px #00f2fe,0 0 30px #ff0055;animation:p 2s infinite alternate ease-in-out;cursor:pointer}
+  @keyframes p{0%{transform:scale(.95);box-shadow:0 0 30px #00f2fe}100%{transform:scale(1.05);box-shadow:0 0 60px #ff0055}}
+  .btn{padding:8px 16px;border-radius:20px;border:2px solid #00f2fe;background:#161b22;color:#fff;cursor:pointer;margin:5px;font-weight:bold}
+  .btn:hover{background:#ff0055;border-color:#ff0055}
+  #box{margin-top:15px;width:80%;max-width:400px;max-height:150px;overflow-y:auto;background:#161b22;padding:10px;border-radius:8px;border:1px solid #00f2fe}
+  img{max-width:250px;border-radius:8px;margin-top:10px;display:none;border:2px solid #ff0055}
+</style>
+</head>
+<body>
+  <div class="globe" onclick="rec()"></div>
+  <p id="st" style="color:#00f2fe">Tap orb to talk</p>
+  <div>
+    <input type="file" id="up" style="display:none">
+    <button class="btn" onclick="document.getElementById('up').click()">📤 Upload</button>
+    <button class="btn" onclick="gen()"> Draw</button>
+  </div>
+  <img id="img"><br>
+  <a id="dl" style="display:none" download="image.png"><button class="btn">📥 Save</button></a>
+  <div id="box"></div>
+
+<script>
+  const S = window.SpeechRecognition || window.webkitSpeechRecognition, r = S ? new S() : null;
+  function rec(){ if(r){ r.start(); document.getElementById('st').innerText = "Listening..." } }
+  if(r){
+    r.onresult = async (e) => {
+      let t = e.results[0][0].transcript;
+      add("You", t);
+      let res = await fetch('/api/chat', {method:'POST', body:JSON.stringify({prompt:t})});
+      let d = await res.json();
+      add("AI", d.reply);
+      window.speechSynthesis.speak(new SpeechSynthesisUtterance(d.reply));
+      document.getElementById('st').innerText = "Tap orb to talk";
+    };
+  }
+  function add(s,m){ let b=document.getElementById('box'); b.innerHTML+=`<p><b style="color:${s==='You'?'#ff0055':'#00f2fe'}">${s}:</b> ${m}</p>`; b.scrollTop=b.scrollHeight; }
+  async function gen(){
+    let p = prompt("Prompt:"); if(!p) return;
+    let res = await fetch('/api/img', {method:'POST', body:JSON.stringify({prompt:p})});
+    let d = await res.json();
+    let i = document.getElementById('img'), a = document.getElementById('dl');
+    i.src = d.url; i.style.display = 'block'; a.href = d.url; a.style.display = 'inline-block';
+  }
+</script>
+</body>
+</html>
